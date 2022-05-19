@@ -18,6 +18,7 @@ class JiraCloud:
         self.session = requests.Session()
         self.session.auth = (username, api_token)
         self.session.headers.update({'Accept': 'application/json'})
+        self.timeout = 10
 
         # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-server-info/#api-rest-api-3-serverinfo-get
         self.__get('serverInfo')
@@ -35,9 +36,9 @@ class JiraCloud:
             requests.models.Response: Full requests response object.
         """
         if not full_url:
-            req = self.session.get(self.base_url + resource_path, params=params)
+            req = self.session.get(self.base_url + resource_path, params=params, timeout=self.timeout)
         else:
-            req = self.session.get(resource_path, params=params)
+            req = self.session.get(resource_path, params=params, timeout=self.timeout)
         if raise_for_status:
             req.raise_for_status()
         return req
@@ -56,9 +57,9 @@ class JiraCloud:
             requests.models.Response: Full requests response object.
         """
         if not full_url:
-            req = self.session.post(self.base_url + resource_path, params=params, json=body, headers={'Content-Type': 'application/json'})
+            req = self.session.post(self.base_url + resource_path, params=params, json=body, headers={'Content-Type': 'application/json'}, timeout=self.timeout)
         else:
-            req = self.session.post(resource_path, params=params, json=body, headers={'Content-Type': 'application/json'})
+            req = self.session.post(resource_path, params=params, json=body, headers={'Content-Type': 'application/json'}, timeout=self.timeout)
         if raise_for_status:
             req.raise_for_status()
         return req
