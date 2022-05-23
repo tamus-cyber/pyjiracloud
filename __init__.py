@@ -1,4 +1,7 @@
+# pylint: disable=missing-module-docstring,line-too-long
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 
 class JiraCloud:
@@ -13,12 +16,14 @@ class JiraCloud:
             api_token (str): API token for API user.
             api_version (int, optional): Ability to switch to a different API version if necessary. Defaults to 3.
         """
-        self.base_url = 'https://%s.atlassian.net/rest/api/%s/' % (atlassian_cloud_domain, api_version)
+        self.base_url = f'https://{atlassian_cloud_domain}.atlassian.net/rest/api/{api_version}/'
         self.atlassian_cloud_domain = atlassian_cloud_domain
         self.session = requests.Session()
         self.session.auth = (username, api_token)
         self.session.headers.update({'Accept': 'application/json'})
         self.timeout = 10
+        adapter = HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1))
+        self.session.mount('https://', adapter)
 
         # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-server-info/#api-rest-api-3-serverinfo-get
         self.__get('serverInfo')
@@ -101,9 +106,9 @@ class JiraCloud:
         data = self.__get('issue/createmeta', params={'projectKeys': [project_key], 'issuetypeNames': [issue_type_name], 'expand': 'projects.issuetypes.fields'}).json()
 
         if not data['projects']:
-            raise KeyError('Project key "%s" not found' % project_key)
+            raise KeyError(f'Project key "{project_key}" not found')
         if not data['projects'][0]['issuetypes']:
-            raise KeyError('Issue type "%s" not found' % issue_type_name)
+            raise KeyError(f'Issue type "{issue_type_name}" not found')
 
         # Since we search for one project key and one issue type name in that project, we can safely assume that we'll only have one project and one issueType returned.
         # Clean things up by removing uncessessary lists and moving the issue type data to a root key.
@@ -140,8 +145,7 @@ class JiraCloud:
             dict: Returns comment information from the API.
         """
         # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
-        # This is some stupid shit right here...
-        return self.__post('issue/%s/comment' % issue_id_or_key, body={
+        return self.__post(f'issue/{issue_id_or_key}/comment', body={
             'properties': [
                 {
                     'key': 'sd.public.comment',
@@ -177,7 +181,7 @@ class JiraCloud:
         """
         # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-transitions-post
         # Transitioning an issue returns no data, so we also return nothing.
-        self.__post('issue/%s/transitions' % issue_id_or_key, body={'transition': {'id': transition_id}})
+        self.__post(f'issue/{issue_id_or_key}/transitions', body={'transition': {'id': transition_id}})
 
     def get_user_by_email(self, email: str) -> dict:
         """Fetch user information by searching for user email.
