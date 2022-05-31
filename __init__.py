@@ -1,7 +1,7 @@
 # pylint: disable=missing-module-docstring,line-too-long
 import requests
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 
 
 class JiraCloud:
@@ -88,36 +88,6 @@ class JiraCloud:
             issues.extend(data['issues'])
             start_at += len(data['issues'])
         return issues
-
-    def get_create_issue_meta(self, project_key: str, issue_type_name: str) -> dict:
-        """Get information on a project and issue type before creating an issue. Helpful for building an issue 'field' dictionary.
-
-        Args:
-            project_key (str): Key of the project you want to create an issue in.
-            issue_type_name (str): Issue type name that you want to create.
-
-        Raises:
-            KeyError: If the project key or issue type name are not valid.
-
-        Returns:
-            dict: A dictionary with project, issuetype, and any other keys provided by the API.
-        """
-        # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-createmeta-get
-        data = self.__get('issue/createmeta', params={'projectKeys': [project_key], 'issuetypeNames': [issue_type_name], 'expand': 'projects.issuetypes.fields'}).json()
-
-        if not data['projects']:
-            raise KeyError(f'Project key "{project_key}" not found')
-        if not data['projects'][0]['issuetypes']:
-            raise KeyError(f'Issue type "{issue_type_name}" not found')
-
-        # Since we search for one project key and one issue type name in that project, we can safely assume that we'll only have one project and one issueType returned.
-        # Clean things up by removing uncessessary lists and moving the issue type data to a root key.
-        data['project'] = data['projects'][0]
-        del data['projects']
-        data['issuetype'] = data['project']['issuetypes'][0]
-        del data['project']['issuetypes']
-
-        return data
 
     def create_issue(self, fields: dict) -> dict:
         """Create an issue in Jira.
