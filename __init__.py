@@ -171,3 +171,12 @@ class JiraCloud:
         if not data or data[0]['emailAddress'] != email:
             return {}
         return data[0]
+
+    def get_projects(self) -> dict:
+        """Fetch all projects.
+
+        Returns:
+            list: List of projects in paginated format. Maximum of 50.
+        """
+        # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/#api-rest-api-3-project-search-get
+        return self.__get('project/search').json()
