@@ -69,6 +69,42 @@ class JiraCloud:
             req.raise_for_status()
         return req
 
+
+    def __put(self, resource_path: str, params: dict = {}, body: dict = {}, raise_for_status: bool = True, full_url: bool = False) -> requests.models.Response:
+        """Make a PUT request to Atlassian Cloud. Primarily to be used by other class functions.
+
+        Args:
+            resource_path (str): The resource path as shown in the API documentation. Ex: https://your-domain.atlassian.net/rest/api/3/issue/DEMO-1 -> issue/DEMO-1
+            params (dict, optional): Query parameter to append to the resource path. Defaults to {}. Defaults to {}.
+            body (dict, optional): Body of the request. Must be JSON. Defaults to {}.
+            raise_for_status (bool, optional): Whether or not to raise error if HTTP response is not okay. Defaults to True.
+            full_url (bool, optional): If True, resource_path will be treated as a complete URL and will not be appended to the base URL. Defaults to False.
+
+        Returns:
+            requests.models.Response: Full requests response object.
+        """
+        if not full_url:
+            req = self.session.put(self.base_url + resource_path, params=params, json=body, headers={'Content-Type': 'application/json'}, timeout=self.timeout)
+        else:
+            req = self.session.put(resource_path, params=params, json=body, headers={'Content-Type': 'application/json'}, timeout=self.timeout)
+        if raise_for_status:
+            req.raise_for_status()
+        return req
+
+
+    def update_issue(self, issue_key: str, body: dict) -> requests.models.Response:
+        """Updatate an issue in Jira.
+        
+        Args:
+            issue_key (str): The key of the issue to update.
+            body (dict): A dictionary representing the updated issue. Ex: {'fields': {'summary': 'New summary'}}
+
+        Returns:
+            requests.models.Response: Full requests response object.
+        """
+        return self.__put(f'issue/{issue_key}', body=body)
+
+
     def search_issues(self, jql: str) -> list:
         """Search for Jira issues using JQL.
 
