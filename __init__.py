@@ -203,7 +203,7 @@ class JiraCloud:
         """
         data = self.__get('user/search', params={'query': email}).json()
         if len(data) > 1:
-            raise ValueError('More than one user returned from query')
+            raise ValueError(f'More than one user returned from query: "{email}"')
         if not data or data[0]['emailAddress'] != email:
             return {}
         return data[0]
