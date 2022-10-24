@@ -105,7 +105,7 @@ class JiraCloud:
         return self.__put(f'issue/{issue_key}', body=body)
 
 
-    def search_issues(self, jql: str) -> list:
+    def search_issues(self, jql: str, max_results: int = None) -> list:
         """Search for Jira issues using JQL.
 
         Args:
@@ -116,14 +116,32 @@ class JiraCloud:
         """
         start_at = 0
         issues = []
-        total = 1
-        while len(issues) < total:
+
+        # if max_results is <50, there is no reason to pull the whole 50 the first time
+        if max_results and max_results <= 50:
+            num_to_grab = max_results
+            params = {'jql': jql, 'maxResults': num_to_grab}
+        else:
+            params = {'jql': jql}
+
+        # initial request to get total number of issues
+        data = self.__get('search', params=params).json()
+        issues.extend(data['issues'])
+
+        # if max_results is set, we need to make sure we don't pull more than that
+        if max_results:
+            num_to_grab = min(max_results, data['total'])
+        else:
+            num_to_grab = data['total']
+
+        # keep grabbing issues until we have all of them or we hit max_results
+        while len(issues) < num_to_grab:
             # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get
             data = self.__get('search', params={'jql': jql, 'startAt': start_at}).json()
-            total = data['total']
             issues.extend(data['issues'])
             start_at += len(data['issues'])
         return issues
+
 
     def create_issue(self, fields: dict) -> dict:
         """Create an issue in Jira.
@@ -215,4 +233,9 @@ class JiraCloud:
             list: List of projects in paginated format. Maximum of 50.
         """
         # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/#api-rest-api-3-project-search-get
-        return self.__get('project/search').json()
+        response = self.__get('project/search').json()
+        project_list = response['values']
+        while response['isLast'] is False:
+            response = self.__get('project/search', params={'startAt': response['nextPage']}).json()
+            project_list.extend(response['values'])
+        return project_list
