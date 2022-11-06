@@ -107,37 +107,19 @@ class JiraCloud:
 
     def search_issues(self, jql: str, max_results: int = None) -> list:
         """Search for Jira issues using JQL.
-
         Args:
             jql (str): A valid JQL query.
-
         Returns:
             list: Returns a list of isses.
         """
         start_at = 0
         issues = []
-
-        # if max_results is <50, there is no reason to pull the whole 50 the first time
-        if max_results and max_results <= 50:
-            num_to_grab = max_results
-            params = {'jql': jql, 'maxResults': num_to_grab}
-        else:
-            params = {'jql': jql}
-
-        # initial request to get total number of issues
-        data = self.__get('search', params=params).json()
-        issues.extend(data['issues'])
-
-        # if max_results is set, we need to make sure we don't pull more than that
-        if max_results:
-            num_to_grab = min(max_results, data['total'])
-        else:
-            num_to_grab = data['total']
-
-        # keep grabbing issues until we have all of them or we hit max_results
-        while len(issues) < num_to_grab:
+        total = 1
+        params = {'jql': jql, 'startAt': start_at} if max_results is None else {'jql': jql, 'startAt': start_at, 'maxResults': max_results}
+        while len(issues) < total and (max_results is None or len(issues) < max_results):
             # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get
-            data = self.__get('search', params={'jql': jql, 'startAt': start_at}).json()
+            data = self.__get('search', params=params).json()
+            total = data['total']
             issues.extend(data['issues'])
             start_at += len(data['issues'])
         return issues
