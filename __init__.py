@@ -235,7 +235,9 @@ class JiraCloud:
         # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/#api-rest-api-3-project-search-get
         response = self.__get('project/search').json()
         project_list = response['values']
+        start_at = 0
         while response['isLast'] is False:
-            response = self.__get('project/search', params={'startAt': response['nextPage']}).json()
+            response = self.__get('project/search', params={'startAt': start_at}).json()
             project_list.extend(response['values'])
+            start_at += len(response['values'])
         return project_list
