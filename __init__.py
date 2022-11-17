@@ -1,4 +1,5 @@
 # pylint: disable=missing-module-docstring,line-too-long
+import concurrent
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -105,23 +106,39 @@ class JiraCloud:
         return self.__put(f'issue/{issue_key}', body=body)
 
 
-    def search_issues(self, jql: str, max_results: int = None) -> list:
+    def search_issues(self, jql: str, max_results: int = None, do_async: bool = False) -> list:
         """Search for Jira issues using JQL.
         Args:
             jql (str): A valid JQL query.
         Returns:
             list: Returns a list of isses.
         """
+        # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get
         start_at = 0
         issues = []
         total = 1
         params = {'jql': jql, 'startAt': start_at} if max_results is None else {'jql': jql, 'startAt': start_at, 'maxResults': max_results}
-        while len(issues) < total and (max_results is None or len(issues) < max_results):
-            # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get
-            data = self.__get('search', params=params).json()
-            total = data['total']
-            issues.extend(data['issues'])
-            start_at += len(data['issues'])
+        
+        # If do_async is true, use 10 threads to speed up the search
+        if do_async:
+            # Get the total number of issues
+            total = self.__get('search', params={'jql': jql, 'maxResults': 0}).json()['total']
+            # Create a list of params for each thread
+            params_list = []
+            for i in range(0, total, 100):
+                params_list.append({'jql': jql, 'startAt': i, 'maxResults': 100})
+            # Create a thread pool
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                # Start the load operations and mark each future with its URL
+                future_to_url = {executor.submit(self.__get, 'search', params=params): params for params in params_list}
+                for future in concurrent.futures.as_completed(future_to_url):
+                    issues += future.result().json()['issues']
+        else:
+            while len(issues) < total and (max_results is None or len(issues) < max_results):
+                data = self.__get('search', params=params).json()
+                total = data['total']
+                issues.extend(data['issues'])
+                start_at += len(data['issues'])
         return issues
 
 
