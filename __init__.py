@@ -135,10 +135,11 @@ class JiraCloud:
                     issues += future.result().json()['issues']
         else:
             while len(issues) < total and (max_results is None or len(issues) < max_results):
-                data = self.__get('search', params=params).json()
-                total = data['total']
-                issues.extend(data['issues'])
-                start_at += len(data['issues'])
+                response = self.__get('search', params=params).json()
+                issues += response['issues']
+                total = response['total']
+                start_at += len(response['issues'])
+                params['startAt'] = start_at
         return issues
 
 
